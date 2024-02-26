@@ -114,6 +114,8 @@ static const RISCVSupportedExtension SupportedExtensions[] = {
     {"xtheadmempair", {1, 0}},
     {"xtheadsync", {1, 0}},
     {"xtheadvdot", {1, 0}},
+    {"xtheadvector", {1, 0}},
+    {"xtheadzvamo", {1, 0}},
     {"xventanacondops", {1, 0}},
 
     {"za128rs", {1, 0}},
@@ -412,6 +414,18 @@ static StringRef getExtensionType(StringRef Ext) {
   return StringRef();
 }
 
+static const RISCVSupportedExtension *
+findExtensionIn(llvm::ArrayRef<RISCVSupportedExtension> ExtensionInfos,
+                StringRef Ext, unsigned MajorVersion, unsigned MinorVersion) {
+  auto Range = std::equal_range(ExtensionInfos.begin(), ExtensionInfos.end(),
+                                Ext, LessExtName());
+  for (auto I = Range.first, E = Range.second; I != E; ++I)
+    if (I->Version.Major == MajorVersion && I->Version.Minor == MinorVersion) {
+      return I;
+    }
+  return ExtensionInfos.end();
+}
+
 static std::optional<RISCVISAInfo::ExtensionVersion>
 isExperimentalExtension(StringRef Ext) {
   auto I =
@@ -450,11 +464,8 @@ bool RISCVISAInfo::isSupportedExtension(StringRef Ext, unsigned MajorVersion,
                                         unsigned MinorVersion) {
   for (auto ExtInfo : {ArrayRef(SupportedExtensions),
                        ArrayRef(SupportedExperimentalExtensions)}) {
-    auto Range =
-        std::equal_range(ExtInfo.begin(), ExtInfo.end(), Ext, LessExtName());
-    for (auto I = Range.first, E = Range.second; I != E; ++I)
-      if (I->Version.Major == MajorVersion && I->Version.Minor == MinorVersion)
-        return true;
+    return findExtensionIn(ExtInfo, Ext, MajorVersion, MinorVersion) !=
+           ExtInfo.end();
   }
 
   return false;
@@ -1105,6 +1116,16 @@ Error RISCVISAInfo::checkDependency() {
     return createStringError(errc::invalid_argument,
                              "'zcf' is only supported for 'rv32'");
 
+  if (Exts.count("xtheadzvamo") && !Exts.count("a"))
+    return createStringError(
+        errc::invalid_argument,
+        "'xtheadzvamo' requires 'a' extension to also be specified");
+
+  if (Exts.count("xtheadvector") && HasVector)
+    return createStringError(
+        errc::invalid_argument,
+        "'xtheadvector' extension is incompatible with 'v' or 'zve*' extension");
+
   return Error::success();
 }
 
@@ -1112,6 +1133,7 @@ static const char *ImpliedExtsD[] = {"f"};
 static const char *ImpliedExtsF[] = {"zicsr"};
 static const char *ImpliedExtsV[] = {"zvl128b", "zve64d"};
 static const char *ImpliedExtsXTHeadVdot[] = {"v"};
+static const char *ImpliedExtsXTHeadZvamo[] = {"a"};
 static const char *ImpliedExtsXSfvcp[] = {"zve32x"};
 static const char *ImpliedExtsXSfvfnrclipxfqf[] = {"zve32f"};
 static const char *ImpliedExtsXSfvfwmaccqqq[] = {"zvfbfmin"};
@@ -1192,6 +1214,7 @@ static constexpr ImpliedExtsEntry ImpliedExts[] = {
     {{"xsfvqmaccdod"}, {ImpliedExtsXSfvqmaccdod}},
     {{"xsfvqmaccqoq"}, {ImpliedExtsXSfvqmaccqoq}},
     {{"xtheadvdot"}, {ImpliedExtsXTHeadVdot}},
+    {{"xtheadzvamo"}, {ImpliedExtsXTHeadZvamo}},
     {{"zabha"}, {ImpliedExtsZabha}},
     {{"zacas"}, {ImpliedExtsZacas}},
     {{"zcb"}, {ImpliedExtsZcb}},
