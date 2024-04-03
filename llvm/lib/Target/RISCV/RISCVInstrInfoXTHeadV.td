@@ -818,14 +818,14 @@ let vm = 1, RVVConstraint = NoConstraint in {
 def TH_VEXT_X_V : RVInstVX<0b001100, OPMVV, (outs GPR:$vd),
                            (ins VR:$vs2, GPR:$rs1),
                            "th.vext.x.v", "$vd, $vs2, $rs1">,
-                  Sched<[WriteVIMovVX, ReadVIMovVX, ReadVIMovXX]>;
+                  Sched<[WriteVMovXS, ReadVMovXS, ReadVMovSX_X]>;
 
 // Integer Scalar Move Instruction
 let Constraints = "$vd = $vd_wb" in
 def TH_VMV_S_X : RVInstV2<0b001101, 0b00000, OPMVX, (outs VR:$vd_wb),
                           (ins VR:$vd, GPR:$rs1),
                           "th.vmv.s.x", "$vd, $rs1">,
-                 Sched<[WriteVIMovXV, ReadVIMovXV,  ReadVIMovXX]>;
+                 Sched<[WriteVMovSX, ReadVMovSX_V, ReadVMovSX_X]>;
 }
 } // hasSideEffects = 0, mayLoad = 0, mayStore = 0
 } // Predicates = [HasVendorXTHeadVector]
@@ -837,12 +837,12 @@ let hasSideEffects = 0, mayLoad = 0, mayStore = 0, vm = 1,
 def TH_VFMV_F_S : RVInstV<0b001100, 0b00000, OPFVV, (outs FPR32:$vd),
                           (ins VR:$vs2),
                           "th.vfmv.f.s", "$vd, $vs2">,
-                  Sched<[WriteVFMovVF, ReadVFMovVF]>;
+                  Sched<[WriteVMovFS, ReadVMovFS]>;
 let Constraints = "$vd = $vd_wb" in
 def TH_VFMV_S_F : RVInstV2<0b001101, 0b00000, OPFVF, (outs VR:$vd_wb),
                            (ins VR:$vd, FPR32:$rs1),
                            "th.vfmv.s.f", "$vd, $rs1">,
-                  Sched<[WriteVFMovFV, ReadVFMovFV, ReadVFMovFX]>;
+                  Sched<[WriteVMovSF, ReadVMovSF_V, ReadVMovSF_F]>;
 
 } // hasSideEffects = 0, mayLoad = 0, mayStore = 0, vm = 1
 } // Predicates = [HasVendorXTHeadVector, HasStdExtF]
